@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  pg-primary:
+    image: postgres:16
+    container_name: pg-primary
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+      - ./primary/init:/docker-entrypoint-initdb.d
+      - ./primary/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./primary/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c hba_file=/etc/postgresql/pg_hba.conf
+    networks:
+      - pgnet
+
+  pg-replica:
+    image: postgres:16
+    container_name: pg-replica
+    environment:
+      POSTGRES_PASSWORD: app123
+      PGUSER: postgres
+    ports:
+      - "5433:5432"
+    depends_on:
+      - pg-primary
+    volumes:
+      - pg_replica_data:/var/lib/postgresql/data
+      - ./replica/setup-replica.sh:/setup-replica.sh
+    entrypoint: ["/bin/bash", "/setup-replica.sh"]
+    networks:
+      - pgnet
+
+volumes:
+  pg_primary_data:
+  pg_replica_data:
+
+networks:
+  pgnet:
